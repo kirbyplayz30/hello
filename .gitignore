@@ -1,10 +1,4 @@
-node_modules/
-.next/
-.env.local
-.env*
-dist/
-.DS_Store
-*.log
-out/
-coverage/
-.vscode/
+node_modules
+.next
+dist
+.env
