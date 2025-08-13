@@ -1,9 +1,0 @@
-export default function StudentPage({ params }: { params: { id: string } }) {
-  return <div>Student ID: {params.id}</div>;
-}
-
-export async function generateStaticParams() {
-  // TODO: Fetch all student IDs from Firestore and return as:
-  // return [{ id: "student1" }, { id: "student2" }, ...];
-  return [];
-}
