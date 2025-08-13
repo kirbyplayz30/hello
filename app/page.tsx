@@ -305,6 +305,8 @@ export default function TutoringDashboard() {
                       <TableRow>
                         <TableHead>Student Name</TableHead>
                         <TableHead>Date</TableHead>
+                        <TableHead>Time</TableHead>
+                        <TableHead>Session</TableHead>
                         <TableHead>Subject</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
@@ -312,35 +314,49 @@ export default function TutoringDashboard() {
                     <TableBody>
                       {checkInsWithStudentName.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={3} className="text-center text-muted-foreground">
+                          <TableCell colSpan={5} className="text-center text-muted-foreground">
                             No check-ins found in the database.
                           </TableCell>
                         </TableRow>
                       ) : (
-                        checkInsWithStudentName.map(checkIn => (
-                          <TableRow key={checkIn.id}>
-                            <TableCell>{checkIn.studentName}</TableCell>
-                            <TableCell>{new Date(checkIn.timestamp).toLocaleDateString()}</TableCell>
-                            <TableCell>{checkIn.classroomId || "N/A"}</TableCell>
-                            <TableCell>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="rounded-full border border-gray-200 hover:bg-gray-100"
-                                title="Delete Check-in"
-                                onClick={async () => {
-                                  try {
-                                    await updateCheckIn(checkIn.id, { active: false });
-                                  } catch (err) {
-                                    setError('Failed to delete check-in');
-                                  }
-                                }}
-                              >
-                                <Trash className="h-4 w-4 text-black" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))
+                        checkInsWithStudentName.map(checkIn => {
+                          const dateObj = new Date(checkIn.timestamp);
+                          const dateStr = dateObj.toLocaleDateString();
+                          // Use system (browser) time zone for display
+                          const timeStr = dateObj.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                          const hour = dateObj.getHours();
+                          let session = '';
+                          if (hour >= 6 && hour < 12) session = 'Morning';
+                          else if (hour >= 12 && hour < 18) session = 'Afternoon';
+                          else if (hour >= 18 && hour < 24) session = 'Night';
+                          else session = 'LateNight';
+                          return (
+                            <TableRow key={checkIn.id}>
+                              <TableCell>{checkIn.studentName}</TableCell>
+                              <TableCell>{dateStr}</TableCell>
+                              <TableCell>{timeStr}</TableCell>
+                              <TableCell>{session}</TableCell>
+                              <TableCell>{checkIn.classroomId || "N/A"}</TableCell>
+                              <TableCell>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="rounded-full border border-gray-200 hover:bg-gray-100"
+                                  title="Delete Check-in"
+                                  onClick={async () => {
+                                    try {
+                                      await updateCheckIn(checkIn.id, { active: false });
+                                    } catch (err) {
+                                      setError('Failed to delete check-in');
+                                    }
+                                  }}
+                                >
+                                  <Trash className="h-4 w-4 text-black" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
                       )}
                     </TableBody>
                   </Table>
@@ -663,41 +679,57 @@ export default function TutoringDashboard() {
                         <TableRow>
                           <TableHead>Student Name</TableHead>
                           <TableHead>Date</TableHead>
+                          <TableHead>Time</TableHead>
+                          <TableHead>Session</TableHead>
                           <TableHead>Subject</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {deletedCheckInsWithStudentName.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={3} className="text-center text-muted-foreground">
+                            <TableCell colSpan={4} className="text-center text-muted-foreground">
                               No recently deleted check-ins.
                             </TableCell>
                           </TableRow>
                         ) : (
-                          deletedCheckInsWithStudentName.map(checkIn => (
-                            <TableRow key={checkIn.id}>
-                              <TableCell>{checkIn.studentName}</TableCell>
-                              <TableCell>{new Date(checkIn.timestamp).toLocaleDateString()}</TableCell>
-                              <TableCell className="flex items-center gap-2">
-                                {checkIn.classroomId || "N/A"}
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="ml-2 border border-gray-200 hover:bg-gray-100 px-2 py-1 text-xs"
-                                  title="Undo Delete"
-                                  onClick={async () => {
-                                    try {
-                                      await updateCheckIn(checkIn.id, { active: true });
-                                    } catch (err) {
-                                      setError('Failed to undo delete');
-                                    }
-                                  }}
-                                >
-                                  Undo
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))
+                          deletedCheckInsWithStudentName.map(checkIn => {
+                            const dateObj = new Date(checkIn.timestamp);
+                            const dateStr = dateObj.toLocaleDateString();
+                            // Use system (browser) time zone for display
+                            const timeStr = dateObj.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                            const hour = dateObj.getHours();
+                            let session = '';
+                            if (hour >= 6 && hour < 12) session = 'Morning';
+                            else if (hour >= 12 && hour < 18) session = 'Afternoon';
+                            else if (hour >= 18 && hour < 24) session = 'Night';
+                            else session = 'LateNight';
+                            return (
+                              <TableRow key={checkIn.id}>
+                                <TableCell>{checkIn.studentName}</TableCell>
+                                <TableCell>{dateStr}</TableCell>
+                                <TableCell>{timeStr}</TableCell>
+                                <TableCell>{session}</TableCell>
+                                <TableCell className="flex items-center gap-2">
+                                  {checkIn.classroomId || "N/A"}
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="ml-2 border border-gray-200 hover:bg-gray-100 px-2 py-1 text-xs"
+                                    title="Undo Delete"
+                                    onClick={async () => {
+                                      try {
+                                        await updateCheckIn(checkIn.id, { active: true });
+                                      } catch (err) {
+                                        setError('Failed to undo delete');
+                                      }
+                                    }}
+                                  >
+                                    Undo
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })
                         )}
                       </TableBody>
                     </Table>
