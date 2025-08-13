@@ -1,3 +1,51 @@
+// Classroom type and helpers
+export interface Classroom {
+  id: string;
+  classroomID: string;
+}
+
+function classroomFromDoc(doc: QueryDocumentSnapshot<DocumentData>): Classroom {
+  const data = doc.data();
+  return {
+    id: doc.id,
+    classroomID: data.classroomID ?? data.Classroom ?? data.classroom ?? '',
+  };
+}
+
+// Real-time subscription to classrooms
+export function subscribeToClassrooms(callback: (classrooms: Classroom[]) => void) {
+  return onSnapshot(collection(db, 'classrooms'), (snapshot) => {
+    const classrooms = snapshot.docs.map(classroomFromDoc);
+    callback(classrooms);
+  }, (error) => {
+    console.error('Error in classrooms subscription:', error);
+  });
+}
+// Teacher type and helpers
+export interface Teacher {
+  id: string;
+  name: string;
+  classroom?: string;
+}
+
+function teacherFromDoc(doc: QueryDocumentSnapshot<DocumentData>): Teacher {
+  const data = doc.data();
+  return {
+    id: doc.id,
+    name: data.Name ?? data.name ?? '',
+    classroom: data.Classroom ?? data.classroom ?? '',
+  };
+}
+
+// Real-time subscription to teachers
+export function subscribeToTeachers(callback: (teachers: Teacher[]) => void) {
+  return onSnapshot(collection(db, 'teachers'), (snapshot) => {
+    const teachers = snapshot.docs.map(teacherFromDoc);
+    callback(teachers);
+  }, (error) => {
+    console.error('Error in teachers subscription:', error);
+  });
+}
 // Firebase configuration and utility functions
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import {

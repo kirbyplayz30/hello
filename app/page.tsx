@@ -29,8 +29,10 @@ import {
 import { 
   Student, 
   CheckIn, 
+  Teacher,
   subscribeToStudents, 
   subscribeToCheckIns, 
+  subscribeToTeachers,
   addStudent, 
   updateStudent, 
   addCheckIn, 
@@ -51,6 +53,7 @@ interface StudentWithStats extends Student {
 export default function TutoringDashboard() {
   const [students, setStudents] = useState<Student[]>([]);
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [studentsWithStats, setStudentsWithStats] = useState<StudentWithStats[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStudent, setSelectedStudent] = useState<StudentWithStats | null>(null);
@@ -77,10 +80,15 @@ export default function TutoringDashboard() {
       setCheckIns(checkInsData)
     })
 
+    // Teachers subscription
+    const unsubscribeTeachers = subscribeToTeachers((teachersData) => {
+      setTeachers(teachersData);
+    });
     // Cleanup subscriptions on unmount
     return () => {
-      unsubscribeStudents()
-      unsubscribeCheckIns()
+      unsubscribeStudents();
+      unsubscribeCheckIns();
+      unsubscribeTeachers();
     }
   }, [])
 
@@ -277,6 +285,36 @@ export default function TutoringDashboard() {
           <Header />
 
           <main className="flex-1 space-y-6 p-6">
+            {/* Teachers List */}
+            <div className="mb-8">
+              <Card>
+                <CardHeader>
+                  <CardTitle>All Teachers</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {teachers.length === 0 ? (
+                    <div className="text-muted-foreground text-center">No teachers found in the database.</div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Classroom</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {teachers.map((teacher) => (
+                          <TableRow key={teacher.id}>
+                            <TableCell>{teacher.name}</TableCell>
+                            <TableCell>{teacher.classroom || "N/A"}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
             {error && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
