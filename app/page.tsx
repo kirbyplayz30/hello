@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
+import Header from "@/components/header"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { 
   SidebarProvider, 
@@ -264,26 +265,16 @@ export default function TutoringDashboard() {
 
   if (loading) {
     return (
-      <SidebarProvider>
-        <SidebarInset>
-          <div className="flex flex-col min-h-screen items-center justify-center">
-            <p className="mt-4 text-muted-foreground">Loading dashboard...</p>
-          </div>
-        </SidebarInset>
-      </SidebarProvider>
+      <div className="flex flex-col min-h-screen items-center justify-center">
+        <p className="mt-4 text-muted-foreground">Loading dashboard...</p>
+      </div>
     );
   }
 
   return (
-    <SidebarProvider>
-  {/* Sidebar removed */}
-      <SidebarInset>
-        <div className="flex flex-col min-h-screen">
-          <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
-            <SidebarTrigger className="-ml-1" />
-            <Separator orientation="vertical" className="mr-2 h-4" />
-            <h1 className="text-lg font-semibold">Tutoring Center Dashboard</h1>
-          </header>
+    <div className="flex flex-col min-h-screen">
+
+          <Header />
 
           <main className="flex-1 space-y-6 p-6">
             {error && (
@@ -739,8 +730,6 @@ export default function TutoringDashboard() {
             </Collapsible>
           </div>
         </main>
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+      </div>
   )
 }
