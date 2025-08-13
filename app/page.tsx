@@ -48,16 +48,19 @@ interface StudentWithStats extends Student {
 // AppSidebar removed for now
 
 export default function TutoringDashboard() {
-  const [students, setStudents] = useState<Student[]>([])
-  const [checkIns, setCheckIns] = useState<CheckIn[]>([])
-  const [studentsWithStats, setStudentsWithStats] = useState<StudentWithStats[]>([])
-  const [searchTerm, setSearchTerm] = useState("")
-  const [selectedStudent, setSelectedStudent] = useState<StudentWithStats | null>(null)
-  const [editingStudent, setEditingStudent] = useState<Student | null>(null)
-  const [newStudent, setNewStudent] = useState({ name: "", email: "", signedUpLessons: 0, costPerLesson: 0 })
-  const [newCheckIn, setNewCheckIn] = useState({ studentId: "", lessonType: "", lessonCost: 0 })
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [students, setStudents] = useState<Student[]>([]);
+  const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
+  const [studentsWithStats, setStudentsWithStats] = useState<StudentWithStats[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedStudent, setSelectedStudent] = useState<StudentWithStats | null>(null);
+  const [invoicePromptOpen, setInvoicePromptOpen] = useState(false);
+  const [invoiceStudent, setInvoiceStudent] = useState<StudentWithStats | null>(null);
+  const [nextMonthLessons, setNextMonthLessons] = useState<number>(0);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [newStudent, setNewStudent] = useState({ name: "", email: "", signedUpLessons: 0, costPerLesson: 0 });
+  const [newCheckIn, setNewCheckIn] = useState({ studentId: "", lessonType: "", lessonCost: 0 });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Set up real-time listeners
   useEffect(() => {
@@ -160,19 +163,16 @@ export default function TutoringDashboard() {
     }
   }
 
-  const generateInvoice = (student: StudentWithStats) => {
+  const generateInvoice = (student: StudentWithStats, nextMonthLessonsValue?: number) => {
     const doc = new jsPDF();
     // Header
     doc.setFontSize(22);
     doc.setFont('helvetica', 'bold');
-    doc.text("Invoice", 105, 20, { align: 'center' });
+  doc.text("Bill and Attendance Record", 105, 20, { align: 'center' });
     doc.setFontSize(14);
     doc.setFont('helvetica', 'normal');
-  // Student Info
-  let y = 30;
-
     // Student Info
-  // let y = 45;
+    let y = 30;
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.text("Student Name:", 20, y);
@@ -188,9 +188,24 @@ export default function TutoringDashboard() {
     doc.text("Teacher:", 20, y);
     doc.setFont('helvetica', 'normal');
     doc.text("Ken", 60, y); // Placeholder, replace with real teacher if available
-
+    y += 8;
+    // Next month lessons
+    if (typeof nextMonthLessonsValue === 'number') {
+      doc.setFont('helvetica', 'bold');
+      doc.text("Next month lessons:", 20, y);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`${nextMonthLessonsValue}`, 70, y);
+      y += 8;
+      // Tuition fee for next month
+      doc.setFont('helvetica', 'bold');
+      doc.text("Next month tuition fee:", 20, y);
+      doc.setFont('helvetica', 'normal');
+      const tuition = (nextMonthLessonsValue * (student.costPerLesson || 0)).toFixed(2);
+      doc.text(`$${tuition}`, 80, y);
+      y += 8;
+    }
     // Table data from actual check-ins
-    const tableY = y + 15;
+    const tableY = y + 7;
     const checkIns = getStudentCheckIns(student.id);
     const tableRows = checkIns.map((checkIn) => [
       checkIn.lessonType || "N/A",
@@ -199,27 +214,21 @@ export default function TutoringDashboard() {
     ]);
     autoTable(doc, {
       startY: tableY,
-      head: [["Lesson Type", "Date", "Price"]],
+      head: [["Lesson Type", "Date", "Amount"]],
       body: tableRows,
       styles: { halign: 'center' },
       headStyles: { fillColor: [240, 240, 240], textColor: 20, fontStyle: 'bold' },
       theme: 'grid',
       margin: { left: 20, right: 20 },
     });
-
     // Total Payable
     // @ts-ignore
     const finalY = (doc.lastAutoTable?.finalY || tableY + 20) + 10;
     doc.setFont('helvetica', 'bold');
     doc.text("Total Payable:", 120, finalY);
     doc.setFont('helvetica', 'normal');
-  doc.text(`$${checkIns.reduce((sum, c) => sum + (c.lessonCost || 0), 0).toFixed(2)}`, 170, finalY, { align: 'right' });
-
-    // Footer
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'normal');
-    doc.text("Thank you for your business!", 105, finalY + 15, { align: 'center' });
-
+    doc.text(`$${checkIns.reduce((sum, c) => sum + (c.lessonCost || 0), 0).toFixed(2)}`, 170, finalY, { align: 'right' });
+  // Footer (removed thank you line)
     doc.save(`invoice_${student.name.replace(/\s+/g, "_")}.pdf`);
   }
 
@@ -251,6 +260,7 @@ export default function TutoringDashboard() {
       studentName: studentIdToName[checkIn.studentId] || null
     }))
     .filter(checkIn => checkIn.studentName);
+
 
   if (loading) {
     return (
@@ -379,58 +389,6 @@ export default function TutoringDashboard() {
                     <CardDescription>Manage student information and track lesson progress</CardDescription>
                   </div>
                   <div className="flex gap-2">
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button>
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add Student
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Add New Student</DialogTitle>
-                          <DialogDescription>Enter the student's information below.</DialogDescription>
-                        </DialogHeader>
-                        <div className="grid gap-4 py-4">
-                          <div className="grid gap-2">
-                            <Label htmlFor="name">Name</Label>
-                            <Input
-                              id="name"
-                              value={newStudent.name}
-                              onChange={(e) => setNewStudent(prev => ({ ...prev, name: e.target.value }))}
-                            />
-                          </div>
-                          <div className="grid gap-2">
-                            <Label htmlFor="email">Email</Label>
-                            <Input
-                              id="email"
-                              type="email"
-                              value={newStudent.email}
-                              onChange={(e) => setNewStudent(prev => ({ ...prev, email: e.target.value }))}
-                            />
-                          </div>
-                          <div className="grid gap-2">
-                            <Label htmlFor="lessons">Signed-Up Lessons</Label>
-                            <Input
-                              id="lessons"
-                              type="number"
-                              value={newStudent.signedUpLessons}
-                              onChange={(e) => setNewStudent(prev => ({ ...prev, signedUpLessons: parseInt(e.target.value) || 0 }))}
-                            />
-                          </div>
-                          <div className="grid gap-2">
-                            <Label htmlFor="cost">Cost Per Lesson</Label>
-                            <Input
-                              id="cost"
-                              type="number"
-                              value={newStudent.costPerLesson}
-                              onChange={(e) => setNewStudent(prev => ({ ...prev, costPerLesson: parseInt(e.target.value) || 0 }))}
-                            />
-                          </div>
-                        </div>
-                        <Button onClick={handleAddStudent}>Add Student</Button>
-                      </DialogContent>
-                    </Dialog>
 
                     <Dialog>
                       <DialogTrigger asChild>
@@ -578,11 +536,53 @@ export default function TutoringDashboard() {
                               </Dialog>
                               <Button
                                 size="sm"
-                                onClick={() => generateInvoice(student)}
+                                onClick={() => {
+                                  setInvoiceStudent(student);
+                                  setInvoicePromptOpen(true);
+                                }}
                               >
                                 <FileText className="h-4 w-4 mr-1" />
                                 Invoice
                               </Button>
+            {/* Invoice Prompt Dialog */}
+            <Dialog open={invoicePromptOpen} onOpenChange={setInvoicePromptOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Next Month's Lessons</DialogTitle>
+                  <DialogDescription>
+                    How many classes will the student take next month?
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                  <label htmlFor="nextMonthLessons" className="block mb-2 font-medium">Select number of classes:</label>
+                  <select
+                    id="nextMonthLessons"
+                    className="border rounded px-3 py-2 w-full"
+                    value={nextMonthLessons}
+                    onChange={e => setNextMonthLessons(Number(e.target.value))}
+                  >
+                    {Array.from({ length: 21 }, (_, i) => (
+                      <option key={i} value={i}>{i}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setInvoicePromptOpen(false)}>Cancel</Button>
+                  <Button
+                    onClick={() => {
+                      if (invoiceStudent) {
+                        generateInvoice(invoiceStudent, nextMonthLessons);
+                        setInvoicePromptOpen(false);
+                        setNextMonthLessons(0);
+                        setInvoiceStudent(null);
+                      }
+                    }}
+                  >
+                    Generate Invoice
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
                             </div>
                           </TableCell>
                         </TableRow>
