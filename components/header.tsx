@@ -17,9 +17,6 @@ export default function Header() {
         <Link href="/classes" className="flex items-center gap-2 text-lg font-medium text-gray-700 hover:text-purple-600 transition-colors">
           <span className="font-bold text-purple-700">📚</span> Classes
         </Link>
-        <Link href="/classes/new" className="flex items-center gap-2 text-lg font-medium text-gray-700 hover:text-green-600 transition-colors">
-          <span className="font-bold text-green-700">＋</span> Create Class
-        </Link>
       </nav>
     </header>
   );
