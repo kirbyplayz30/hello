@@ -1,10 +1,12 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, Search, FileText, Eye, Edit, UserPlus, Clock, AlertCircle } from 'lucide-react'
+import { Plus, Search, FileText, Eye, Edit, UserPlus, Clock, AlertCircle, Trash } from 'lucide-react'
+import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -30,7 +32,8 @@ import {
   subscribeToCheckIns, 
   addStudent, 
   updateStudent, 
-  addCheckIn
+  addCheckIn, 
+  updateCheckIn
 } from "@/lib/firebase"
 
 import jsPDF from "jspdf"
@@ -39,6 +42,7 @@ import autoTable from "jspdf-autotable"
 interface StudentWithStats extends Student {
   completedLessons: number
   totalAmountOwed: number
+  active?: boolean;
 }
 
 // AppSidebar removed for now
@@ -230,27 +234,34 @@ export default function TutoringDashboard() {
   });
 
   // Prepare check-ins with student names
+  // Only show active check-ins in main table
   const checkInsWithStudentName = checkIns
+    .filter(checkIn => checkIn.active !== false)
     .map(checkIn => ({
       ...checkIn,
       studentName: studentIdToName[checkIn.studentId] || null
     }))
     .filter(checkIn => checkIn.studentName); // Only those with a matching student
 
+  // Recently deleted check-ins (active === false)
+  const deletedCheckInsWithStudentName = checkIns
+    .filter(checkIn => checkIn.active === false)
+    .map(checkIn => ({
+      ...checkIn,
+      studentName: studentIdToName[checkIn.studentId] || null
+    }))
+    .filter(checkIn => checkIn.studentName);
+
   if (loading) {
     return (
       <SidebarProvider>
-  {/* Sidebar removed */}
         <SidebarInset>
-          <div className="flex items-center justify-center min-h-screen">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-              <p className="mt-4 text-muted-foreground">Loading dashboard...</p>
-            </div>
+          <div className="flex flex-col min-h-screen items-center justify-center">
+            <p className="mt-4 text-muted-foreground">Loading dashboard...</p>
           </div>
         </SidebarInset>
       </SidebarProvider>
-    )
+    );
   }
 
   return (
@@ -276,8 +287,7 @@ export default function TutoringDashboard() {
             <div className="mb-8">
               <Card>
                 <CardHeader>
-                  <CardTitle>All Check-ins (Matched to Students)</CardTitle>
-                  <CardDescription>Shows all check-ins from the database, matched to student names.</CardDescription>
+                  <CardTitle>All Check-ins</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <Table>
@@ -286,6 +296,7 @@ export default function TutoringDashboard() {
                         <TableHead>Student Name</TableHead>
                         <TableHead>Date</TableHead>
                         <TableHead>Subject</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -301,6 +312,23 @@ export default function TutoringDashboard() {
                             <TableCell>{checkIn.studentName}</TableCell>
                             <TableCell>{new Date(checkIn.timestamp).toLocaleDateString()}</TableCell>
                             <TableCell>{checkIn.classroomId || "N/A"}</TableCell>
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="rounded-full border border-gray-200 hover:bg-gray-100"
+                                title="Delete Check-in"
+                                onClick={async () => {
+                                  try {
+                                    await updateCheckIn(checkIn.id, { active: false });
+                                  } catch (err) {
+                                    setError('Failed to delete check-in');
+                                  }
+                                }}
+                              >
+                                <Trash className="h-4 w-4 text-black" />
+                              </Button>
+                            </TableCell>
                           </TableRow>
                         ))
                       )}
@@ -309,6 +337,7 @@ export default function TutoringDashboard() {
                 </CardContent>
               </Card>
             </div>
+
 
             {/* Dashboard Stats */}
             <div className="grid gap-4 md:grid-cols-3">
@@ -613,7 +642,71 @@ export default function TutoringDashboard() {
                 <Button onClick={handleSaveStudent}>Save Changes</Button>
               </DialogContent>
             </Dialog>
-          </main>
+          {/* Recently Deleted Check-ins Dropdown (moved to bottom) */}
+          <div className="mt-8">
+            <Collapsible>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between cursor-pointer p-4">
+                  <div>
+                    <CardTitle>Recently Deleted Check-ins</CardTitle>
+                  </div>
+                  <CollapsibleTrigger asChild>
+                    <button className="ml-4 text-sm text-gray-600 border rounded px-3 py-1 bg-white hover:bg-gray-100 transition">
+                      Show/Hide
+                    </button>
+                  </CollapsibleTrigger>
+                </CardHeader>
+                <CollapsibleContent asChild>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Student Name</TableHead>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Subject</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {deletedCheckInsWithStudentName.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={3} className="text-center text-muted-foreground">
+                              No recently deleted check-ins.
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          deletedCheckInsWithStudentName.map(checkIn => (
+                            <TableRow key={checkIn.id}>
+                              <TableCell>{checkIn.studentName}</TableCell>
+                              <TableCell>{new Date(checkIn.timestamp).toLocaleDateString()}</TableCell>
+                              <TableCell className="flex items-center gap-2">
+                                {checkIn.classroomId || "N/A"}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="ml-2 border border-gray-200 hover:bg-gray-100 px-2 py-1 text-xs"
+                                  title="Undo Delete"
+                                  onClick={async () => {
+                                    try {
+                                      await updateCheckIn(checkIn.id, { active: true });
+                                    } catch (err) {
+                                      setError('Failed to undo delete');
+                                    }
+                                  }}
+                                >
+                                  Undo
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
+          </div>
+        </main>
         </div>
       </SidebarInset>
     </SidebarProvider>

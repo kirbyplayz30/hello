@@ -37,6 +37,7 @@ export interface Student {
   lastInvoiceMonth?: string;
   nextMonthRequest?: number;
   rolloverLessons?: number;
+  active?: boolean;
 }
 
 export interface CheckIn {
@@ -46,6 +47,7 @@ export interface CheckIn {
   lessonCost: number;
   timestamp: number;
   classroomId?: string; // Subject or classroom identifier
+  active?: boolean; // true = visible, false = deleted
 }
 
 // Helpers to convert Firestore docs
@@ -73,7 +75,12 @@ function checkInFromDoc(doc: QueryDocumentSnapshot<DocumentData>): CheckIn {
     lessonCost: data.lessonCost,
     timestamp: typeof data.timestamp === 'number' ? data.timestamp : (data.timestamp?.toMillis?.() ?? Date.now()),
     classroomId: data.classroomId ?? '',
+    active: data.active !== false, // default to true if undefined
   };
+}
+// Update a check-in (e.g., set active=false)
+export async function updateCheckIn(id: string, updatedFields: Partial<Omit<CheckIn, 'id'>>) {
+  await updateDoc(doc(db, 'checkins', id), updatedFields);
 }
 
 // Real-time subscription to students
@@ -124,6 +131,7 @@ export async function updateStudent(id: string, updatedFields: Partial<Omit<Stud
   if (updatedFields.lastInvoiceMonth !== undefined) mappedFields.lastInvoiceMonth = updatedFields.lastInvoiceMonth;
   if (updatedFields.nextMonthRequest !== undefined) mappedFields.nextMonthRequest = updatedFields.nextMonthRequest;
   if (updatedFields.rolloverLessons !== undefined) mappedFields.rolloverLessons = updatedFields.rolloverLessons;
+  if (updatedFields.active !== undefined) mappedFields.active = updatedFields.active;
   await updateDoc(doc(db, 'students', id), mappedFields);
 }
 
