@@ -38,6 +38,36 @@ import {
   addCheckIn, 
   updateCheckIn
 } from "@/lib/firebase"
+import { db } from "@/lib/firebase";
+import { collection, getDocs } from "firebase/firestore";
+// Utility to convert array of objects to CSV string
+function toCSV(data: any[]) {
+  if (!data.length) return '';
+  const keys = Object.keys(data[0]);
+  const csvRows = [keys.join(",")];
+  for (const row of data) {
+    csvRows.push(keys.map(k => JSON.stringify(row[k] ?? "")).join(","));
+  }
+  return csvRows.join("\n");
+}
+
+async function exportAllCollections() {
+  const collections = ["students", "checkins", "teachers", "classes", "classrooms"];
+  for (const col of collections) {
+    const snap = await getDocs(collection(db, col));
+    const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const csv = toCSV(data);
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${col}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+}
 
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
@@ -281,10 +311,11 @@ export default function TutoringDashboard() {
 
   return (
     <div className="flex flex-col min-h-screen">
-
-          <Header />
-
-          <main className="flex-1 space-y-6 p-6">
+      <Header />
+      <div className="flex justify-end max-w-4xl mx-auto mt-4">
+        <Button onClick={exportAllCollections} variant="outline">Export All Data as CSV</Button>
+      </div>
+      <main className="flex-1 space-y-6 p-6">
             {/* Teachers List */}
             <div className="mb-8">
               <Card>

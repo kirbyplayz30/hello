@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import Header from "@/components/header";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { subscribeToCheckIns, CheckIn } from "@/lib/firebase";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, onSnapshot, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Calendar from "react-calendar";
 import 'react-calendar/dist/Calendar.css';
@@ -15,11 +15,21 @@ export default function CalendarPage() {
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [studentMap, setStudentMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const unsubscribe = subscribeToCheckIns((data: CheckIn[]) => setCheckIns(data));
     const unsubClasses = onSnapshot(collection(db, "classes"), (snapshot) => {
       setClasses(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+    });
+    // Fetch all students and build a map of id -> name
+    getDocs(collection(db, "students")).then((snapshot) => {
+      const map: Record<string, string> = {};
+      snapshot.docs.forEach(doc => {
+        const data = doc.data();
+        map[doc.id] = data.name || doc.id;
+      });
+      setStudentMap(map);
     });
     return () => {
       unsubscribe();
@@ -81,39 +91,41 @@ export default function CalendarPage() {
   return (
     <>
       <Header />
-      <div className="max-w-4xl mx-auto p-8">
+  <div className="max-w-4xl mx-auto p-4 md:p-8">
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl">Monthly Calendar</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col md:flex-row gap-8 items-start justify-center">
-            <div className="w-full md:w-auto flex justify-center">
-              <Calendar
-                value={selectedDate}
-                onClickDay={(date: Date) => setSelectedDate(date)}
-                tileContent={({ date }: { date: Date }) => {
-                  const key = date.toISOString().slice(0, 10);
-                  const hasClass = !!classOccurrencesMap[key];
-                  const hasCheckIn = checkIns.some((c: CheckIn) => {
-                    const d = new Date(c.timestamp);
+          <div className="flex flex-col md:flex-row gap-8 items-start justify-center w-full">
+            <div className="w-full md:w-[400px] flex-shrink-0 flex justify-center md:justify-start">
+              <div className="overflow-x-auto">
+                <Calendar
+                  value={selectedDate}
+                  onClickDay={(date: Date) => setSelectedDate(date)}
+                  tileContent={({ date }: { date: Date }) => {
+                    const key = date.toISOString().slice(0, 10);
+                    const hasClass = !!classOccurrencesMap[key];
+                    const hasCheckIn = checkIns.some((c: CheckIn) => {
+                      const d = new Date(c.timestamp);
+                      return (
+                        d.getFullYear() === date.getFullYear() &&
+                        d.getMonth() === date.getMonth() &&
+                        d.getDate() === date.getDate()
+                      );
+                    });
                     return (
-                      d.getFullYear() === date.getFullYear() &&
-                      d.getMonth() === date.getMonth() &&
-                      d.getDate() === date.getDate()
+                      <>
+                        {hasClass && <span style={{ color: 'blue', fontSize: 12, lineHeight: 1, marginRight: hasCheckIn ? 2 : 0 }}>●</span>}
+                        {hasCheckIn && <span style={{ color: 'green', fontSize: 12, lineHeight: 1 }}>●</span>}
+                      </>
                     );
-                  });
-                  return (
-                    <>
-                      {hasClass && <span style={{ color: 'blue', fontSize: 12, lineHeight: 1, marginRight: hasCheckIn ? 2 : 0 }}>●</span>}
-                      {hasCheckIn && <span style={{ color: 'green', fontSize: 12, lineHeight: 1 }}>●</span>}
-                    </>
-                  );
-                }}
-                className="react-calendar border-none shadow-lg rounded-lg text-lg w-[420px] min-h-[420px]"
-              />
+                  }}
+                  className="react-calendar border-none shadow-lg rounded-lg text-lg w-full min-w-[320px] max-w-[400px] min-h-[420px]"
+                />
+              </div>
             </div>
-            <div className="flex-1 w-full">
+            <div className="flex-1 w-full min-w-0">
               <h2 className="font-semibold mb-2 text-lg">Classes for {selectedDate.toLocaleDateString()}</h2>
               <Table className="mb-6">
                 <TableHeader>
@@ -162,7 +174,7 @@ export default function CalendarPage() {
                   ) : (
                     checkInsForDay.map((checkIn: CheckIn) => (
                       <TableRow key={checkIn.id}>
-                        <TableCell>{(checkIn as any).studentName || checkIn.studentId}</TableCell>
+                        <TableCell>{(checkIn as any).studentName || studentMap[checkIn.studentId] || checkIn.studentId}</TableCell>
                         <TableCell>{new Date(checkIn.timestamp).toLocaleTimeString()}</TableCell>
                         <TableCell>{checkIn.classroomId || "N/A"}</TableCell>
                       </TableRow>
