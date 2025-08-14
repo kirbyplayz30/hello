@@ -54,7 +54,7 @@ export default function NewClassPage() {
     setSubmitting(true);
     setMessage(null);
     try {
-      const res = await fetch("/api/classes", {
+  const res = await fetch("/api/classapi", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
