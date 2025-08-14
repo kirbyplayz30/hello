@@ -1,3 +1,4 @@
+// Trivial change to force Vercel redeploy and route registration
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/firebase";
 import { collection, addDoc } from "firebase/firestore";
